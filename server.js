@@ -10,14 +10,14 @@ const io = new Server(server);
 app.use(express.static("public"));
 
 const questions = [
-  "你喜歡喝熱茶嗎？",
-  "你平常會泡茶嗎？",
-  "你喜歡烏龍茶嗎？",
-  "你曾參加茶道活動嗎？",
-  "你會自己泡茶招待朋友嗎？",
-  "你喜歡無糖茶嗎？",
-  "你覺得現泡茶比手搖飲好喝嗎？",
-  "你願意學習茶道文化嗎？"
+  "前賢不在，我偷懶一下沒關係！",
+  "當受到前賢指正時，我不會煩躁，且會反省！",
+  "別人對我態度很差，我還是會對他好！",
+  "我的付出沒被看見，我就不想付出了！",
+  "後學不聽我的，我會生氣不被尊重！",
+  "當道場安排不如我所想，我還是願意配合！",
+  "我心裡會評價同修，覺得他人不如我！",
+  "當事情有更好的作法時，我也不願改變！"
 ];
 
 let currentQuestion = 0;
@@ -53,6 +53,15 @@ io.on("connection", (socket) => {
 
     if(currentQuestion < questions.length - 1){
       currentQuestion++;
+      io.emit("update", getState());
+    }
+
+  });
+
+  socket.on("prevQuestion", () => {
+
+    if(currentQuestion > 0){
+      currentQuestion--;
       io.emit("update", getState());
     }
 

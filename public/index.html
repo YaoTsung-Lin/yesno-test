@@ -22,7 +22,7 @@ body{
 
 .card{
   width:90%;
-  max-width:700px;
+  max-width:760px;
   background:white;
   border-radius:24px;
   padding:30px;
@@ -35,9 +35,10 @@ h1{
 }
 
 .question{
-  font-size:34px;
+  font-size:32px;
   margin:35px 0;
-  min-height:100px;
+  min-height:120px;
+  line-height:1.6;
 }
 
 .vote-buttons{
@@ -53,6 +54,7 @@ button{
   padding:18px 48px;
   font-size:28px;
   cursor:pointer;
+  transition:0.2s;
 }
 
 button:hover{
@@ -69,11 +71,11 @@ button:hover{
   color:white;
 }
 
-.next{
+.control{
   background:#6d4c41;
   color:white;
   font-size:18px;
-  padding:12px 28px;
+  padding:12px 24px;
 }
 
 .result{
@@ -87,9 +89,17 @@ button:hover{
   padding-top:20px;
 }
 
+.control-buttons{
+  display:flex;
+  justify-content:center;
+  gap:15px;
+  flex-wrap:wrap;
+}
+
 .small{
   color:#777;
   font-size:14px;
+  margin-top:12px;
 }
 
 </style>
@@ -117,11 +127,16 @@ button:hover{
 </div>
 
 <div class="admin">
-  <button class="next" onclick="nextQuestion()">下一題</button>
+
+  <div class="control-buttons">
+    <button class="control" onclick="prevQuestion()">上一題</button>
+    <button class="control" onclick="nextQuestion()">下一題</button>
+  </div>
 
   <div class="small">
-    主持人控制用：按下後所有人同步切換
+    主持人控制用：按下後所有人同步切換題目
   </div>
+
 </div>
 
 </div>
@@ -152,6 +167,10 @@ function vote(type){
 
 function nextQuestion(){
   socket.emit("nextQuestion");
+}
+
+function prevQuestion(){
+  socket.emit("prevQuestion");
 }
 
 </script>
