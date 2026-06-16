@@ -1,0 +1,5 @@
+<!doctype html><html><body><h1>8題統計</h1><div id=r></div><script>
+fetch('/api/results').then(r=>r.json()).then(d=>{
+r.innerHTML=d.map((x,i)=>`第${i+1}題 YES:${x.yes} NO:${x.no}`).join('<br>');
+});
+</script></body></html>

@@ -1,55 +1,63 @@
-<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>YES/NO投票V3</title><script src="/socket.io/socket.io.js"></script>
+
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="/socket.io/socket.io.js"></script>
 <style>
-body{font-family:Microsoft JhengHei;background:#f6f1e8;margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.card{background:#fff;width:92%;max-width:900px;padding:30px;border-radius:24px;text-align:center}
-.question{font-size:64px;font-weight:700;line-height:1.5;min-height:180px;margin:30px 0}
-.vote{padding:36px 96px;font-size:56px;font-weight:bold;border:none;border-radius:20px;cursor:pointer;margin:10px}
-.yes{background:#43a047;color:white}.no{background:#e53935;color:white}
-.selected-yes{box-shadow:0 0 0 8px #a5d6a7}.selected-no{box-shadow:0 0 0 8px #ffcdd2}
-.result{font-size:38px;line-height:2}
-.yc{color:#2e7d32;font-weight:bold}.nc{color:#c62828;font-weight:bold}
-.ctrl{padding:14px 24px;font-size:20px;margin:5px}
+body{font-family:Microsoft JhengHei;text-align:center;padding:20px}
+.question{font-size:56px;font-weight:bold;min-height:160px}
+.btn{font-size:48px;padding:25px 80px;margin:10px;border:none;border-radius:15px;color:#fff}
+.y{background:green}.n{background:red}
+.sel{outline:8px solid gold}
+.hide{display:none}
 </style></head><body>
-<div class="card">
-<h1>YES / NO 即時投票 V3</h1>
-<div id="qno"></div>
-<div class="question" id="question"></div>
-<button id="yesBtn" class="vote yes" onclick="vote('yes')">YES</button>
-<button id="noBtn" class="vote no" onclick="vote('no')">NO</button>
-<div class="result">
-🟢 YES：<span id="yesCount" class="yc">0</span>票<br>
-🔴 NO：<span id="noCount" class="nc">0</span>票
-</div>
-<div>
-<button class="ctrl" onclick="prevQuestion()">← 上一題</button>
-<button class="ctrl" onclick="nextQuestion()">下一題 →</button>
-<button class="ctrl" onclick="resetVotes()">重置本題票數</button>
-</div>
+<h1>YES / NO 投票</h1>
+<div id=qno></div>
+<div class=question id=q></div>
+<button id=yes class="btn y" onclick="vote('yes')">YES</button>
+<button id=no class="btn n" onclick="vote('no')">NO</button>
+<h2>🟢 YES:<span id=yc>0</span></h2>
+<h2>🔴 NO:<span id=nc>0</span></h2>
+<div id=host>
+<button id=prev onclick="socket.emit('prev')">上一題</button>
+<button id=next onclick="socket.emit('next')">下一題</button>
+<button onclick="socket.emit('reset')">重置</button>
+<a href="/results.html">統計頁</a>
 </div>
 <script>
 const socket=io();
-let selected=null;
+const mode=new URLSearchParams(location.search).get("mode")||"player";
+if(mode!=="host") document.getElementById("host").classList.add("hide");
 
-function refreshButtons(){
- let y=document.getElementById('yesBtn');
- let n=document.getElementById('noBtn');
- y.classList.remove('selected-yes');
- n.classList.remove('selected-no');
- y.innerHTML='YES'; n.innerHTML='NO';
- if(selected==='yes'){y.classList.add('selected-yes');y.innerHTML='✓ YES';}
- if(selected==='no'){n.classList.add('selected-no');n.innerHTML='✓ NO';}
+let userId=localStorage.userId||crypto.randomUUID();
+localStorage.userId=userId;
+
+let answers=JSON.parse(localStorage.answers||"{}");
+
+function paint(){
+ yes.classList.remove("sel"); no.classList.remove("sel");
+ const c=answers[cur];
+ if(c==="yes") yes.classList.add("sel");
+ if(c==="no") no.classList.add("sel");
 }
 
-socket.on('update',d=>{
- document.getElementById('qno').innerHTML=`第 ${d.currentQuestion+1} 題 / 共 ${d.total} 題`;
- document.getElementById('question').innerHTML=d.question;
- document.getElementById('yesCount').innerHTML=d.results.yes;
- document.getElementById('noCount').innerHTML=d.results.no;
+let cur=0;
+
+socket.on("state",s=>{
+ cur=s.current;
+ qno.innerHTML=`第 ${cur+1} 題 / 共 ${s.questions.length} 題`;
+ q.innerHTML=s.questions[cur];
+ yc.innerHTML=s.results[cur].yes;
+ nc.innerHTML=s.results[cur].no;
+
+ prev.disabled=(cur===0);
+ next.disabled=(cur===s.questions.length-1);
+ paint();
 });
 
-function vote(t){selected=t;refreshButtons();socket.emit('vote',t);}
-function nextQuestion(){selected=null;refreshButtons();socket.emit('nextQuestion');}
-function prevQuestion(){selected=null;refreshButtons();socket.emit('prevQuestion');}
-function resetVotes(){selected=null;refreshButtons();socket.emit('resetVotes');}
+function vote(a){
+ answers[cur]=a;
+ localStorage.answers=JSON.stringify(answers);
+ paint();
+ socket.emit("vote",{question:cur,answer:a,userId});
+}
 </script></body></html>

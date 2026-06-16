@@ -20,66 +20,53 @@ const questions=[
 "當事情有更好的作法時，我也不願改變！"
 ];
 
-let currentQuestion=0;
+let current=0;
 let results=questions.map(()=>({yes:0,no:0}));
-let votes={}; // socketid_question => answer
+let votes={};
 
 function state(){
- return {
-  currentQuestion,
-  total:questions.length,
-  question:questions[currentQuestion],
-  results:results[currentQuestion]
- };
+ return {current,questions,results};
 }
 
 io.on("connection",(socket)=>{
+ socket.emit("state",state());
 
- socket.emit("update",state());
-
- socket.on("vote",(type)=>{
-   if(!["yes","no"].includes(type)) return;
-
-   const key=`${socket.id}_${currentQuestion}`;
+ socket.on("vote",({question,answer,userId})=>{
+   const key=userId+"_"+question;
    const old=votes[key];
 
-   if(old===type){
-      io.emit("update",state());
-      return;
-   }
+   if(old===answer) return;
 
-   if(old){
-      results[currentQuestion][old]--;
-   }
+   if(old) results[question][old]--;
+   results[question][answer]++;
+   votes[key]=answer;
 
-   results[currentQuestion][type]++;
-   votes[key]=type;
-
-   io.emit("update",state());
+   io.emit("state",state());
  });
 
- socket.on("nextQuestion",()=>{
-   if(currentQuestion<questions.length-1){
-      currentQuestion++;
-      io.emit("update",state());
+ socket.on("next",()=>{
+   if(current<questions.length-1){
+     current++;
+     io.emit("state",state());
    }
  });
 
- socket.on("prevQuestion",()=>{
-   if(currentQuestion>0){
-      currentQuestion--;
-      io.emit("update",state());
+ socket.on("prev",()=>{
+   if(current>0){
+     current--;
+     io.emit("state",state());
    }
  });
 
- socket.on("resetVotes",()=>{
-   results[currentQuestion]={yes:0,no:0};
+ socket.on("reset",()=>{
+   results[current]={yes:0,no:0};
    Object.keys(votes).forEach(k=>{
-      if(k.endsWith("_"+currentQuestion)) delete votes[k];
+     if(k.endsWith("_"+current)) delete votes[k];
    });
-   io.emit("update",state());
+   io.emit("state",state());
  });
-
 });
+
+app.get("/api/results",(req,res)=>res.json(results));
 
 server.listen(process.env.PORT||3000);
