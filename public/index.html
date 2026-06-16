@@ -1,179 +1,55 @@
-
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YES / NO 即時投票</title>
-
-<script src="/socket.io/socket.io.js"></script>
-
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YES/NO投票V3</title><script src="/socket.io/socket.io.js"></script>
 <style>
-
-body{
-  margin:0;
-  background:#f6f1e8;
-  font-family:"Microsoft JhengHei", sans-serif;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh;
-}
-
-.card{
-  width:90%;
-  max-width:760px;
-  background:white;
-  border-radius:24px;
-  padding:30px;
-  box-shadow:0 8px 24px rgba(0,0,0,0.15);
-  text-align:center;
-}
-
-h1{
-  color:#5d4037;
-}
-
-.question{
-  font-size:32px;
-  margin:35px 0;
-  min-height:120px;
-  line-height:1.6;
-}
-
-.vote-buttons{
-  display:flex;
-  justify-content:center;
-  gap:20px;
-  margin-bottom:30px;
-}
-
-button{
-  border:none;
-  border-radius:18px;
-  padding:18px 48px;
-  font-size:28px;
-  cursor:pointer;
-  transition:0.2s;
-}
-
-button:hover{
-  transform:scale(1.05);
-}
-
-.yes{
-  background:#43a047;
-  color:white;
-}
-
-.no{
-  background:#e53935;
-  color:white;
-}
-
-.control{
-  background:#6d4c41;
-  color:white;
-  font-size:18px;
-  padding:12px 24px;
-}
-
-.result{
-  font-size:24px;
-  line-height:2;
-}
-
-.admin{
-  border-top:1px solid #ddd;
-  margin-top:30px;
-  padding-top:20px;
-}
-
-.control-buttons{
-  display:flex;
-  justify-content:center;
-  gap:15px;
-  flex-wrap:wrap;
-}
-
-.small{
-  color:#777;
-  font-size:14px;
-  margin-top:12px;
-}
-
-</style>
-
-</head>
-
-<body>
-
+body{font-family:Microsoft JhengHei;background:#f6f1e8;margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.card{background:#fff;width:92%;max-width:900px;padding:30px;border-radius:24px;text-align:center}
+.question{font-size:64px;font-weight:700;line-height:1.5;min-height:180px;margin:30px 0}
+.vote{padding:36px 96px;font-size:56px;font-weight:bold;border:none;border-radius:20px;cursor:pointer;margin:10px}
+.yes{background:#43a047;color:white}.no{background:#e53935;color:white}
+.selected-yes{box-shadow:0 0 0 8px #a5d6a7}.selected-no{box-shadow:0 0 0 8px #ffcdd2}
+.result{font-size:38px;line-height:2}
+.yc{color:#2e7d32;font-weight:bold}.nc{color:#c62828;font-weight:bold}
+.ctrl{padding:14px 24px;font-size:20px;margin:5px}
+</style></head><body>
 <div class="card">
-
-<h1>YES / NO 即時投票</h1>
-
-<div id="questionNo"></div>
-
+<h1>YES / NO 即時投票 V3</h1>
+<div id="qno"></div>
 <div class="question" id="question"></div>
-
-<div class="vote-buttons">
-  <button class="yes" onclick="vote('yes')">YES</button>
-  <button class="no" onclick="vote('no')">NO</button>
-</div>
-
+<button id="yesBtn" class="vote yes" onclick="vote('yes')">YES</button>
+<button id="noBtn" class="vote no" onclick="vote('no')">NO</button>
 <div class="result">
-  YES：<span id="yesCount">0</span> 票<br>
-  NO：<span id="noCount">0</span> 票
+🟢 YES：<span id="yesCount" class="yc">0</span>票<br>
+🔴 NO：<span id="noCount" class="nc">0</span>票
 </div>
-
-<div class="admin">
-
-  <div class="control-buttons">
-    <button class="control" onclick="prevQuestion()">上一題</button>
-    <button class="control" onclick="nextQuestion()">下一題</button>
-  </div>
-
-  <div class="small">
-    主持人控制用：按下後所有人同步切換題目
-  </div>
-
+<div>
+<button class="ctrl" onclick="prevQuestion()">← 上一題</button>
+<button class="ctrl" onclick="nextQuestion()">下一題 →</button>
+<button class="ctrl" onclick="resetVotes()">重置本題票數</button>
 </div>
-
 </div>
-
 <script>
+const socket=io();
+let selected=null;
 
-const socket = io();
+function refreshButtons(){
+ let y=document.getElementById('yesBtn');
+ let n=document.getElementById('noBtn');
+ y.classList.remove('selected-yes');
+ n.classList.remove('selected-no');
+ y.innerHTML='YES'; n.innerHTML='NO';
+ if(selected==='yes'){y.classList.add('selected-yes');y.innerHTML='✓ YES';}
+ if(selected==='no'){n.classList.add('selected-no');n.innerHTML='✓ NO';}
+}
 
-socket.on("update", (data) => {
-
-  document.getElementById("questionNo").innerHTML =
-    `第 ${data.currentQuestion + 1} 題 / 共 ${data.total} 題`;
-
-  document.getElementById("question").innerHTML =
-    data.question;
-
-  document.getElementById("yesCount").innerHTML =
-    data.results.yes;
-
-  document.getElementById("noCount").innerHTML =
-    data.results.no;
-
+socket.on('update',d=>{
+ document.getElementById('qno').innerHTML=`第 ${d.currentQuestion+1} 題 / 共 ${d.total} 題`;
+ document.getElementById('question').innerHTML=d.question;
+ document.getElementById('yesCount').innerHTML=d.results.yes;
+ document.getElementById('noCount').innerHTML=d.results.no;
 });
 
-function vote(type){
-  socket.emit("vote", type);
-}
-
-function nextQuestion(){
-  socket.emit("nextQuestion");
-}
-
-function prevQuestion(){
-  socket.emit("prevQuestion");
-}
-
-</script>
-
-</body>
-</html>
+function vote(t){selected=t;refreshButtons();socket.emit('vote',t);}
+function nextQuestion(){selected=null;refreshButtons();socket.emit('nextQuestion');}
+function prevQuestion(){selected=null;refreshButtons();socket.emit('prevQuestion');}
+function resetVotes(){selected=null;refreshButtons();socket.emit('resetVotes');}
+</script></body></html>
