@@ -1,67 +1,60 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script src="/socket.io/socket.io.js"></script>
 <style>
-body{font-family:Microsoft JhengHei;text-align:center;padding:20px}
-.question{font-size:56px;font-weight:bold;min-height:160px}
-.btn{font-size:48px;padding:25px 80px;margin:10px;border:none;border-radius:15px;color:#fff}
+body{font-family:Microsoft JhengHei;margin:0;text-align:center}
+.start{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;background:linear-gradient(135deg,#f7f0dd,#d8c3a5)}
+.question{font-size:56px;font-weight:bold;min-height:150px;padding:20px}
+.row{display:flex;justify-content:center;gap:80px}
+.btn{font-size:48px;padding:25px 80px;border:none;border-radius:15px;color:#fff}
 .y{background:green}.n{background:red}
-.countY{color:green;font-size:42px;font-weight:bold}
-.countN{color:red;font-size:42px;font-weight:bold}
-.sel{outline:8px solid gold}.hide{display:none}
+.countY{color:green;font-size:42px;font-weight:bold}.countN{color:red;font-size:42px;font-weight:bold}
+.sel{outline:8px solid gold}
 </style></head><body><div id="app"></div>
 <script>
 const socket=io();
 const mode=new URLSearchParams(location.search).get('mode')||'player';
-let userId=localStorage.userId||crypto.randomUUID();
-localStorage.userId=userId;
-let answers=JSON.parse(localStorage.answers||'{}');
-let stateData=null;
+let userId=localStorage.userId||crypto.randomUUID(); localStorage.userId=userId;
+let answers=JSON.parse(localStorage.answers||'{}'); let sdata=null;
 
 function render(){
- let s=stateData;
- if(!s) return;
- let h='';
-
+ if(!sdata) return;
+ let s=sdata,h='';
  if(s.stage==='start'){
-   h='<h1>YES / NO 投票</h1><button onclick="socket.emit(&quot;start&quot;)">開始</button>';
+   h=`<div class="start"><h1>🍵 ${s.title}</h1>`;
    if(mode==='host'){
-      h+='<br><br><button onclick="socket.emit(&quot;resetAll&quot;)">全部重置</button>';
+     h+=`<input id="t" value="${s.title}" style="font-size:30px;padding:10px;width:500px"><br><br>
+     <button onclick="socket.emit('setTitle',document.getElementById('t').value)">更新標題</button><br><br>
+     <button onclick="socket.emit('start')">開始</button><br><br>
+     <button onclick="socket.emit('resetAll')">全部重置</button>`;
+   }else{
+     h+=`<h2>等待主持人開始...</h2>`;
    }
+   h+='</div>';
  }
  else if(s.stage==='quiz'){
    let c=s.current;
    h=`<div>第 ${c+1} 題 / 共 ${s.questions.length} 題</div>
    <div class="question">${s.questions[c]}</div>
-   <button class="btn y ${answers[c]==='yes'?'sel':''}" onclick="vote('yes')">YES</button>
-   <div class="countY">${s.results[c].yes}</div>
-   <button class="btn n ${answers[c]==='no'?'sel':''}" onclick="vote('no')">NO</button>
-   <div class="countN">${s.results[c].no}</div>`;
-
+   <div class="row">
+   <div><button class="btn y ${answers[c]=='yes'?'sel':''}" onclick="vote('yes')">YES</button><div class="countY">${s.results[c].yes}</div></div>
+   <div><button class="btn n ${answers[c]=='no'?'sel':''}" onclick="vote('no')">NO</button><div class="countN">${s.results[c].no}</div></div>
+   </div>`;
    if(mode==='host'){
-      h+=`<div>
-      <button ${c===0?'disabled':''} onclick="socket.emit('prev')">上一題</button>
-      <button ${c===s.questions.length-1?'disabled':''} onclick="socket.emit('next')">下一題</button>
-      </div>`;
+      h+='<br>';
+      h+=`<button ${c===0?'disabled':''} onclick="socket.emit('prev')">上一題</button>`;
+      if(c===s.questions.length-1){
+        h+=` <button onclick="socket.emit('finish')">結束</button>`;
+      } else {
+        h+=` <button onclick="socket.emit('next')">下一題</button>`;
+      }
    }
  }
  else{
-   h='<h1>投票結果</h1>';
-   s.questions.forEach((q,i)=>{
-      h+=`<p>${i+1}. ${q}<br>YES:${s.results[i].yes} NO:${s.results[i].no}</p>`;
-   });
-   if(mode==='host'){
-      h+='<button onclick="socket.emit(&quot;restart&quot;)">重新開始</button>';
-   }
+   h='<h1>📊 投票結果</h1>';
+   s.questions.forEach((q,i)=>{h+=`<p>${i+1}. ${q}<br>🟢YES:${s.results[i].yes}　🔴NO:${s.results[i].no}</p>`});
+   if(mode==='host') h+='<br><button onclick="socket.emit(\'restart\')">重新開始</button>';
  }
-
- document.getElementById('app').innerHTML=h;
+ app.innerHTML=h;
 }
-
-function vote(a){
- answers[stateData.current]=a;
- localStorage.answers=JSON.stringify(answers);
- socket.emit('vote',{question:stateData.current,answer:a,userId});
- render();
-}
-
-socket.on('state',s=>{stateData=s;render();});
+function vote(a){answers[sdata.current]=a;localStorage.answers=JSON.stringify(answers);socket.emit('vote',{question:sdata.current,answer:a,userId});}
+socket.on('state',s=>{sdata=s;render();});
 </script></body></html>
